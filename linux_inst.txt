@@ -11,6 +11,7 @@ mv * /var/www/html/
 cd /var/www/html/ 
 systemctl enable httpd 
 systemctl start httpd 
+sudo systemctl restart httpd
 
 #!/bin/bash
 # Variables
@@ -24,3 +25,77 @@ aws s3 sync s3://$BUCKET_NAME $WEB_ROOT
 sudo systemctl restart httpd
 
 chmod +x deploy.sh
+
+
+EC2 Setup for S3 bucket Use
+
+#!/bin/bash
+sudo su -
+yum update -y
+yum install -y httpd 
+cd /var/www/html
+aws s3 cp s3://fabioportfolio /var/www/html --recursive #to copy busket
+systemctl enable httpd 
+systemctl start httpd 
+aws s3 sync s3://fabioportfolio /var/www/html  #sync the busket
+
+----------------------
+
+Using AWS CodePipeline to deploy a static website from an S3 bucket to an EC2 instance is a common approach for automating the deployment process. Below is a general outline of how you can set up this pipeline:
+
+1. Create the S3 Bucket to Store Your Website Files
+Ensure your static website files are stored in an S3 bucket.
+2. Set Up the EC2 Instance
+Launch an EC2 instance where your static website will be deployed.
+Install the necessary web server software (e.g., Apache or Nginx).
+Ensure the instance has an IAM role with the appropriate S3 permissions.
+3. Create an Application Deployment Script on EC2
+Write a script on your EC2 instance that will pull the website files from the S3 bucket and move them to the web server's document root.
+Example script (deploy.sh):
+
+bash
+Copy code
+#!/bin/bash
+# Variables
+BUCKET_NAME="your-bucket-name"
+WEB_ROOT="/var/www/html"
+
+# Sync files from S3 to the web root
+aws s3 sync s3://$BUCKET_NAME $WEB_ROOT
+
+# Restart the web server (e.g., Apache)
+sudo systemctl restart httpd
+Make sure this script is executable:
+bash
+Copy code
+chmod +x deploy.sh
+
+4. Set Up the AWS CodePipeline
+Source Stage:
+
+Select "Amazon S3" as the source provider.
+Choose the S3 bucket and specify the location of your static website files.
+Build Stage (Optional):
+
+If you need to process the files (e.g., minify, transpile), add a build stage with AWS CodeBuild.
+Configure a buildspec.yml file to define the build steps.
+Deploy Stage:
+
+Use "AWS CodeDeploy" as the deployment provider.
+Choose the deployment group that includes your EC2 instance.
+In your deployment configuration, reference the deploy.sh script on the EC2 instance to pull the files from S3 and restart the web server.
+5. Create a CodeDeploy Application and Deployment Group
+In AWS CodeDeploy, create an application and a deployment group.
+Specify the EC2 instance(s) as the deployment target.
+Configure the deployment group to use the EC2 instance's IAM role.
+6. Trigger the Pipeline
+Every time you upload new files to the S3 bucket, the pipeline will automatically trigger.
+CodePipeline will deploy the updated website files to your EC2 instance by invoking the deploy.sh script.
+7. Test the Deployment
+Once the pipeline is complete, access your EC2 instance's public IP or domain to verify that the website has been updated.
+Additional Considerations:
+IAM Permissions: Ensure that the IAM role for CodePipeline has permissions to access the S3 bucket, and that the IAM role for CodeDeploy has permissions to interact with the EC2 instance.
+Security Groups: Ensure the security groups for your EC2 instance allow HTTP/HTTPS traffic so that your website is accessible.
+This setup provides an automated, repeatable deployment process that can be easily triggered by changes to your S3 bucket contents.
+
+----------------------------
