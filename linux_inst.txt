@@ -11,3 +11,16 @@ mv * /var/www/html/
 cd /var/www/html/ 
 systemctl enable httpd 
 systemctl start httpd 
+
+#!/bin/bash
+# Variables
+BUCKET_NAME="your-bucket-name"
+WEB_ROOT="/var/www/html"
+
+# Sync files from S3 to the web root
+aws s3 sync s3://$BUCKET_NAME $WEB_ROOT
+
+# Restart the web server (e.g., Apache)
+sudo systemctl restart httpd
+
+chmod +x deploy.sh
